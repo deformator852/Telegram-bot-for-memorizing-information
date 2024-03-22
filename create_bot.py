@@ -2,6 +2,6 @@ from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 import os
 
-TOKEN = "7199178671:AAFHmaYlgdtVdqN9S3IQHlJ9J6wnR5dOLj4"
+TOKEN = "6261314397:AAFRs5_y2yl5J542IjzqYUc_9Vgb7xZksK8"
 bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
