@@ -1,13 +1,16 @@
 from datetime import datetime, timedelta
 from aiogram import Router, F
 from aiogram.filters import Command
-from aiogram.types import CallbackQuery, FSInputFile, Message
+from aiogram.methods import delete_message
+from aiogram.types import CallbackQuery, Message, chat
 from keyboards.keyboards import Keyboards  # pyright:ignore
 from aiogram.fsm.context import FSMContext
 from states import AddNewInformation  # pyright:ignore
 from pymongo.results import UpdateResult
 from enums import RepeatStatus  # pyright:ignore
+from create_bot import bot
 import pymongo
+import json
 
 router = Router(name=__name__)
 keyboards = Keyboards()
@@ -37,6 +40,7 @@ async def get_new_informaton(message: Message, state: FSMContext):
                     "info": message.text,
                     "repeat_time": formated_time,
                     "repeat_count": RepeatStatus.FIRST.value,
+                    "send_repeating": False,
                 },
             }
         },
@@ -81,6 +85,62 @@ async def command_info(message: Message):
 
 """
     )
+
+
+@router.callback_query(F.data.startswith("repeat_"))
+async def repeat_data(callback_query: CallbackQuery):
+    data_str = callback_query.data[7:]
+    data_dict = json.loads(data_str)
+    index = data_dict["index"]
+    user_id = callback_query.from_user.id
+    repeat_time = datetime.now()
+    update_time = ""
+    chat_id = callback_query.message.chat.id
+    message_id = callback_query.message.message_id
+    await bot.delete_message(chat_id, message_id)
+    if "minutes" in data_dict:
+        update_time = repeat_time + timedelta(minutes=data_dict["minutes"])
+    elif "hours" in data_dict:
+        update_time = repeat_time + timedelta(minutes=data_dict["hours"])
+    else:
+        update_time = repeat_time + timedelta(minutes=data_dict["days"])
+
+    update_time = update_time.strftime("%Y-%m-%d %H:%M")
+
+    repeat_time_update = users.update_one(
+        {"_id": user_id},
+        {"$set": {f"memorize_info.{index}.repeat_time": update_time}},
+    )
+    users.update_one(
+        {"_id": user_id}, {"$inc": {f"memorize_info.{index}.repeat_count": 1}}
+    )
+    users.update_one(
+        {"_id": user_id}, {"$set": {f"memorize_info.{index}.send_repeating": False}}
+    )
+    if repeat_time_update.modified_count > 0:
+        match data_dict["repeat_status"]:
+            case RepeatStatus.FIRST.value:
+                await callback_query.message.answer(
+                    f"You have successfully repeated the information! The next repeat in: 35 minutes! "
+                )
+            case RepeatStatus.SECOND.value:
+                await callback_query.message.answer(
+                    f"You have successfully repeated the information! The next repeat in: 8 hours! "
+                )
+            case RepeatStatus.THIRD.value:
+                await callback_query.message.answer(
+                    f"You have successfully repeated the information! The next repeat in: 24 hours! "
+                )
+            case RepeatStatus.FOURTH.value:
+                await callback_query.message.answer(
+                    f"You have successfully repeated the information! The next repeat in: 3 days! "
+                )
+            case RepeatStatus.FIFTH.value:
+                await callback_query.message.answer(
+                    f"You have successfully repeated the information! The next repeat in: 7 days! "
+                )
+            case _:
+                pass
 
 
 @router.callback_query(F.data == "cancel")
