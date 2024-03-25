@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 from aiogram import Router, F
 from aiogram.filters import Command
-from aiogram.methods import delete_message
-from aiogram.types import CallbackQuery, Message, chat
+from aiogram.types import CallbackQuery, Message
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from keyboards.keyboards import Keyboards  # pyright:ignore
 from aiogram.fsm.context import FSMContext
 from states import AddNewInformation  # pyright:ignore
@@ -17,6 +17,52 @@ keyboards = Keyboards()
 client = client = pymongo.MongoClient("mongodb://localhost:27017/")
 db = client["memorize_bot"]
 users = db["users"]
+
+
+@router.callback_query(F.data.startswith("accept-remove-info_"))
+async def accept_remove_info(callback_query: CallbackQuery):
+    info = callback_query.data[19:]
+    remove_info = users.update_one(
+        {"_id": callback_query.message.chat.id},
+        {"$pull": {"memorize_info": {"info": info}}},
+    )
+    if remove_info.modified_count > 0:
+        await callback_query.message.answer("Successfully removed!")
+
+
+@router.callback_query(F.data.startswith("remove-info_"))
+async def press_remove_info_button_callback(callback_query: CallbackQuery):
+    info = callback_query.data[12:]
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅", callback_data=f"accept-remove-info_{info}")
+    await callback_query.message.answer(
+        f"Are you sure that wanna remove this information - {info}?",
+        reply_markup=builder.as_markup(),
+    )
+
+
+@router.callback_query(F.data == "remove info")
+async def remove_info_callback(callback_query: CallbackQuery):
+    user_memorize_info = users.find_one(
+        {"_id": callback_query.message.chat.id}, {"memorize_info": 1, "_id": 0}
+    )
+    if user_memorize_info:
+        for data in user_memorize_info["memorize_info"]:
+            builder = InlineKeyboardBuilder()
+            builder.button(text="remove", callback_data=f"remove-info_{data['info']}")
+            await callback_query.message.answer(
+                f"INFO - {data['info']}", reply_markup=builder.as_markup()
+            )
+
+
+@router.callback_query(F.data == "list info")
+async def list_info_callback(callback_query: CallbackQuery):
+    user_memorize_info = users.find_one(
+        {"_id": callback_query.message.chat.id}, {"memorize_info": 1, "_id": 0}
+    )
+    if user_memorize_info:
+        for data in user_memorize_info["memorize_info"]:
+            await callback_query.message.answer(f"INFO - {data['info']}")
 
 
 @router.callback_query(F.data == "start memorize")
@@ -139,10 +185,9 @@ async def repeat_data(callback_query: CallbackQuery):
                 await callback_query.message.answer(
                     f"You have successfully repeated the information! The next repeat in: 7 days! "
                 )
-            case _:
-                pass
 
 
 @router.callback_query(F.data == "cancel")
 async def cancel_state_callback(callback_query: CallbackQuery, state: FSMContext):
+    await callback_query.message.answer("Successfully canceled")
     await state.clear()

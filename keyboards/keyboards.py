@@ -15,10 +15,9 @@ class Keyboards:
     async def profile_kb():
         builder = InlineKeyboardBuilder()
         builder.button(text="start memorize", callback_data="start memorize")
-        builder.button(text="repeat", callback_data="repeat")
-        builder.button(
-            text="memorized information", callback_data="memorized information"
-        )
+        builder.button(text="list info", callback_data="list info")
+        builder.button(text="remove info", callback_data="remove info")
+        builder.button(text="delete account", callback_data="delete account")
         builder.adjust(1)
         return builder.as_markup()
 
