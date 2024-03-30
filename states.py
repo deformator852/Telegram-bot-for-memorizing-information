@@ -2,4 +2,8 @@ from aiogram.fsm.state import State, StatesGroup
 
 
 class AddNewInformation(StatesGroup):
-    information = State()
+    INFORMATION = State()
+
+
+class SendMessageToSupport(StatesGroup):
+    MESSAGE = State()

@@ -3,12 +3,13 @@ from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from keyboards.keyboards import Keyboards  # pyright:ignore
+from keyboards.keyboards import Keyboards
 from aiogram.fsm.context import FSMContext
-from states import AddNewInformation  # pyright:ignore
+from states import *
 from pymongo.results import UpdateResult
-from enums import RepeatStatus  # pyright:ignore
-from create_bot import bot
+from enums import RepeatStatus
+from create_bot import bot, ADMINS_ID
+import random
 import pymongo
 import json
 
@@ -70,10 +71,10 @@ async def start_memorize_callback(callback_query: CallbackQuery, state: FSMConte
     await callback_query.message.answer(
         "Write information: ", reply_markup=await keyboards.cancel_kb()
     )
-    await state.set_state(AddNewInformation.information)
+    await state.set_state(AddNewInformation.INFORMATION)
 
 
-@router.message(AddNewInformation.information)
+@router.message(AddNewInformation.INFORMATION)
 async def get_new_informaton(message: Message, state: FSMContext):
     repeat_time = datetime.now()
     repeat_time += timedelta(minutes=20)
@@ -100,10 +101,14 @@ async def get_new_informaton(message: Message, state: FSMContext):
 async def command_start(message: Message):
     user_id = message.from_user.id
     user: dict | None = users.find_one({"_id": user_id})
-    if user is None:
+    if user_id in ADMINS_ID:
+        await message.answer(
+            "Hello admin!In case you receive a message from a user through support you will receive a link to the user's account for further communication.",
+            reply_markup=await keyboards.admin_kb(),
+        )
+    elif user is None:
         users.insert_one({"_id": user_id, "memorize_info": []})
-
-    await message.answer("Welcome!", reply_markup=await keyboards.start_kb())
+        await message.answer("Welcome!", reply_markup=await keyboards.start_kb())
 
 
 @router.message(Command("profile"))
@@ -112,8 +117,23 @@ async def command_start_memorize(message: Message):
 
 
 @router.message(Command("support"))
-async def command_support(message: Message):
-    pass
+async def command_support(message: Message, state: FSMContext):
+    await message.answer(
+        "Send your message(In order for an admin to message you you must enable message forwarding in the privacy settings.): "
+    )
+    await state.set_state(SendMessageToSupport.MESSAGE)
+
+
+@router.message(SendMessageToSupport.MESSAGE)
+async def get_support_message(message: Message, state: FSMContext):
+    support_message = message.text
+    admin = random.choice(ADMINS_ID)
+    await bot.send_message(
+        admin,
+        f"Message from <a href='tg://user?id={message.from_user.id}'>{message.from_user.full_name}</a>.Text - {support_message}  ",
+    )
+    await message.answer("Wait for a reply, the admin will contact you!")
+    await state.clear()
 
 
 @router.message(Command("info"))

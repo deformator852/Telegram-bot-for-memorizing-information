@@ -10,21 +10,6 @@ import logging
 import sys
 import multiprocessing
 
-#
-# def loop_create_index():
-#     while True:
-#         try:
-#             client = client = pymongo.MongoClient("mongodb://localhost:27017/")
-#             db = client["memorize_bot"]
-#             users = db["users"]
-#             users.create_index([("_id", 1)], background=True)
-#         except Exception as e:
-#             print("Error with loop_create_index - ", e)
-#             sys.exit(0)
-#         finally:
-#             client.close()  # pyright:ignore
-#         time.sleep(12 * 60 * 60)
-
 
 async def main():
     dp.include_router(bot_routers.router)
@@ -121,6 +106,5 @@ def run_check():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    multiprocessing.Process(target=loop_create_index, daemon=True).start()
     multiprocessing.Process(target=run_check, daemon=True).start()
     asyncio.run(main())

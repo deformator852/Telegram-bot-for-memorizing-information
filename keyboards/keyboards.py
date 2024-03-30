@@ -26,3 +26,7 @@ class Keyboards:
         builder = InlineKeyboardBuilder()
         builder.button(text="cancel", callback_data="cancel")
         return builder.as_markup()
+
+    @staticmethod
+    async def admin_kb():
+        builder = InlineKeyboardBuilder()
